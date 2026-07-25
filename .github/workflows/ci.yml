@@ -1,0 +1,41 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  # Weekly rebuild: catch upstream breakage (base images, dependencies)
+  # before a reader copying the tutorial hits it.
+  schedule:
+    - cron: "0 6 * * 1"
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    container: crystallang/crystal:1.21.0-alpine
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install git (needed by shards for github deps)
+        run: apk add --no-cache git
+      - name: Install dependencies
+        run: shards install
+      - name: Check formatting
+        run: crystal tool format --check
+      - name: Run specs
+        run: crystal spec
+
+  lint:
+    runs-on: ubuntu-latest
+    container: crystallang/crystal:1.21.0-alpine
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install git
+        run: apk add --no-cache git
+      # The tagged ameba release does not yet build on Crystal 1.21, so build
+      # the current master, which does.
+      - name: Build ameba
+        run: |
+          git clone --depth 1 https://github.com/crystal-ameba/ameba.git /ameba
+          cd /ameba && shards build
+      - name: Lint
+        run: /ameba/bin/ameba

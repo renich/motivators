@@ -1,0 +1,7 @@
+.git
+bin
+lib
+.shards
+spec
+*.md
+.tool-versions

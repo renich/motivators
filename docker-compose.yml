@@ -1,0 +1,15 @@
+# Reference deployment. `docker compose up` builds and runs the image with no
+# external registry. Once the image is published to GHCR you can delete the
+# `build:` line and just pull ghcr.io/OWNER/motivators.
+#
+# Single process, in-memory state: do NOT scale this to more than one replica —
+# sessions live in the memory of one container (see TUTORIAL.md).
+services:
+  motivators:
+    build: .
+    image: ghcr.io/OWNER/motivators:latest
+    ports:
+      - "3000:3000"
+    environment:
+      KEMAL_ENV: production
+    restart: unless-stopped
