@@ -16,7 +16,7 @@ describe Participant do
 
   it "cannot be ready without a ranking" do
     p = Participant.new(id: "tok", name: "Ada")
-    expect_raises(Participant::NotRankedYet) do
+    expect_raises(Participant::NotRankedYet, /ranking/) do
       p.mark_ready
     end
   end

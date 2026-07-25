@@ -21,6 +21,20 @@ describe SessionStore do
     codes.uniq.size.should eq(codes.size)
   end
 
+  it "gives each session a distinct, non-empty facilitator token" do
+    store = SessionStore.new
+    first = store.open(now).facilitator_token
+    second = store.open(now).facilitator_token
+    first.should_not be_empty
+    first.should_not eq(second)
+  end
+
+  it "defaults to a multi-hour ttl" do
+    session = SessionStore.new.open(Time.utc(2026, 1, 1))
+    session.expired?(Time.utc(2026, 1, 1, 2, 0)).should be_false
+    session.expired?(Time.utc(2026, 1, 1, 4, 0)).should be_true
+  end
+
   it "sweeps expired sessions and keeps live ones" do
     store = SessionStore.new(ttl: 3.hours)
     old = store.open(Time.utc(2026, 1, 1))
