@@ -1,6 +1,9 @@
 # Moving Motivators
 
 [![Live demo](https://img.shields.io/badge/live%20demo-motivators.yoteau.fr-c85a3b)](https://motivators.yoteau.fr)
+[![CI](https://github.com/JadeKharats/motivators/actions/workflows/ci.yml/badge.svg)](https://github.com/JadeKharats/motivators/actions/workflows/ci.yml)
+[![License: MIT](https://img.shields.io/badge/license-MIT-3b7a57)](LICENSE)
+[![Container image](https://img.shields.io/badge/ghcr.io-motivators-2496ed?logo=docker&logoColor=white)](https://github.com/JadeKharats/motivators/pkgs/container/motivators)
 
 Ephemeral, real-time [Moving Motivators](https://management30.com/practice/moving-motivators/)
 sessions for a team — built with Crystal and Kemal. In-memory only, no
