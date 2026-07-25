@@ -2,7 +2,8 @@
 
 Ephemeral, real-time [Moving Motivators](https://management30.com/practice/moving-motivators/)
 sessions for a team — built with Crystal and Kemal. In-memory only, no
-database, ships as an **11 MB** container built `FROM scratch`.
+database, ships as a **~14 MB** container built `FROM scratch` and running as
+an unprivileged user.
 
 A facilitator opens a session and gets a short join code. Participants join
 with that code and privately rank ten motivator cards from most to least

@@ -6,7 +6,7 @@ size dictate every technical choice, rather than reaching for the biggest tool
 we know.
 
 The finished app is ~290 lines of Crystal plus a single-file frontend. It has
-no database, no ORM, no build pipeline, and ships as an 11 MB container. The
+no database, no ORM, no build pipeline, and ships as a ~14 MB container. The
 whole point is to show that this is *enough* for the problem, and that keeping
 it this small is a feature, not a limitation.
 
@@ -457,47 +457,78 @@ one confidentiality rule gives the facilitator exactly the right view for free.
 
 ---
 
-## Chapter 9 — A container built `FROM scratch`
+## Chapter 9 — A hardened container built `FROM scratch`
 
-Image size is a selling point, so we make the image contain nothing but the
-binary and the assets.
+The image should contain nothing but what runs, and should run as an
+unprivileged user. We borrow the approach from
+[spider-gazelle's Dockerfile](https://github.com/spider-gazelle/spider-gazelle/blob/master/Dockerfile):
+build a **dynamically** linked binary, then ship exactly the shared libraries
+`ldd` says it needs. Each library can then be patched independently of the
+application, and a scanner sees real package versions rather than one opaque
+static blob.
 
-The build is multi-stage. The first stage compiles a fully static binary
-against musl on Alpine, then strips it:
+The build stage compiles a dynamic release binary, strips it, and creates the
+unprivileged user (so its `/etc/passwd` entry can be reused in the final image):
 
 ```dockerfile
 FROM crystallang/crystal:1.21.0-alpine AS build
-RUN apk add --no-cache --update \
-      openssl-libs-static zlib-static yaml-static pcre2-dev
+ARG IMAGE_UID=10001
+ENV UID=$IMAGE_UID
+ENV APP_USER=appuser
+RUN apk add --no-cache --update git ca-certificates
+RUN adduser -D -g "" -H -s /sbin/nologin -u "${UID}" "${APP_USER}"
 WORKDIR /app
 COPY shard.yml shard.lock ./
 RUN shards install --production --skip-postinstall
 COPY src ./src
 COPY public ./public
-RUN shards build --release --production --no-debug --static && \
+RUN shards build --release --production --no-debug && \
     strip bin/motivators
 ```
 
-`--production` keeps dev dependencies out, `--static` links musl statically so
-the binary needs no libc at runtime, `--no-debug` drops debug info, and `strip`
-removes the symbol table.
+Then the key step — walk the binary's dependencies with `ldd` and copy each
+one into a `deps/` tree that mirrors its absolute path:
 
-The final stage is `scratch` — an empty image — with just the binary and the
-`public/` folder:
+```dockerfile
+RUN for binary in /app/bin/*; do \
+      ldd "$binary" | tr -s '[:blank:]' '\n' | grep '^/' | \
+      xargs -I % sh -c 'mkdir -p $(dirname "deps%"); cp "%" "deps%";'; \
+    done
+```
+
+For this app that collects seven libraries: the musl loader, OpenSSL
+(`libssl`/`libcrypto`), the garbage collector, `libgcc_s`, PCRE2 and zlib.
+
+The final stage is `scratch` with just the identity files, the libraries, the
+binary and the assets — and it runs as `appuser`:
 
 ```dockerfile
 FROM scratch
 ENV KEMAL_ENV=production
-WORKDIR /app
-COPY --from=build /app/bin/motivators ./motivators
-COPY --from=build /app/public ./public
+ENV SSL_CERT_FILE=/etc/ssl/certs/ca-certificates.crt
+COPY --from=build /etc/passwd /etc/passwd
+COPY --from=build /etc/group /etc/group
+COPY --from=build /etc/hosts /etc/hosts
+COPY --from=build /etc/ssl/certs/ca-certificates.crt /etc/ssl/certs/
+COPY --from=build /app/deps /
+COPY --from=build /app/bin/motivators /motivators
+COPY --from=build /app/public /public
+USER appuser:appuser
 EXPOSE 3000
-ENTRYPOINT ["/app/motivators"]
+ENTRYPOINT ["/motivators"]
+CMD ["-b", "0.0.0.0", "-p", "3000"]
 ```
 
-The result is about **11 MB**. A static Crystal binary is larger than a
-dynamically linked one — it carries its own libc, OpenSSL, and garbage
-collector — but in exchange the image depends on nothing at all.
+The result is about **14 MB**. That's a few MB more than a fully static build
+would be — the copied OpenSSL is larger than what static stripping would fold
+in — but in exchange the image runs unprivileged and its libraries are visible
+and patchable. Port 3000 is above 1024, so the non-root user can bind it with
+no extra capability.
+
+One thing we *don't* add: a `HEALTHCHECK`. Spider-gazelle's binary has a
+built-in `-c URL` self-check it can call, but Kemal doesn't, and a `scratch`
+image has no shell or `curl` to run one. So health checking is left to the
+orchestrator hitting `/` over HTTP.
 
 `docker-compose.yml` is the reference deployment readers copy:
 
