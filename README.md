@@ -5,6 +5,8 @@ sessions for a team — built with Crystal and Kemal. In-memory only, no
 database, ships as a **~14 MB** container built `FROM scratch` and running as
 an unprivileged user.
 
+**▶ Live instance: https://motivators.yoteau.fr**
+
 A facilitator opens a session and gets a short join code. Participants join
 with that code and privately rank ten motivator cards from most to least
 important to them. When everyone is ready, the facilitator triggers a **reveal**
@@ -26,7 +28,8 @@ and all rankings appear side by side for discussion.
 
 ## Quick start
 
-With Docker or Podman Compose:
+Try it now on the [live instance](https://motivators.yoteau.fr), or run it
+yourself with Docker or Podman Compose:
 
 ```bash
 docker compose up   # or: podman-compose up
