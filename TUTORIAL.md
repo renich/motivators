@@ -523,6 +523,13 @@ yet, so CI builds ameba from master; ameba is intentionally *not* a shard
 dependency, which keeps `shards install` clean.) A weekly scheduled run rebuilds
 everything to catch upstream breakage before a reader does.
 
+On pull requests, a third job runs **incremental mutation testing**: it diffs
+the branch, and for each changed `src/domain/*.cr` file it runs crytic and fails
+below a 90% mutation score. Only the domain is gated — it's the pure logic worth
+holding to that bar; the Kemal adapter is glue the integration spec already
+exercises. Like ameba, crytic is built in CI (with its ameba dependency pinned
+to master) rather than added as a shard dependency.
+
 `release.yml` fires on a `v*` tag and pushes the image to GHCR, tagged with the
 semantic version and `latest`:
 

@@ -39,3 +39,46 @@ jobs:
           cd /ameba && shards build
       - name: Lint
         run: /ameba/bin/ameba
+
+  # Incremental mutation testing: only the domain files touched by the PR, so
+  # feedback stays fast. The domain is the pure logic worth gating; the Kemal
+  # adapter is glue covered by the integration spec.
+  mutation:
+    runs-on: ubuntu-latest
+    container: crystallang/crystal:1.21.0-alpine
+    if: github.event_name == 'pull_request'
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Install git
+        run: apk add --no-cache git
+      - name: Install dependencies
+        run: shards install
+      # crytic is not a shard dependency (the local dev uses a global binary),
+      # and its tagged release pulls a ameba that doesn't build on Crystal 1.21,
+      # so build crytic here with ameba pinned to master.
+      - name: Build crytic
+        run: |
+          git clone --depth 1 --branch v9.0.0 https://github.com/hanneskaeufler/crytic.git /crytic
+          cd /crytic
+          printf 'dependencies:\n  ameba:\n    github: crystal-ameba/ameba\n    branch: master\n' > shard.override.yml
+          shards install
+          shards build
+      - name: Mutate changed domain files
+        run: |
+          git config --global --add safe.directory "$PWD"
+          git fetch --depth 1 origin "${{ github.base_ref }}"
+          changed=$(git diff --name-only "origin/${{ github.base_ref }}...HEAD" \
+            | grep '^src/domain/.*\.cr$' || true)
+          if [ -z "$changed" ]; then
+            echo "No domain files changed — skipping mutation testing."
+            exit 0
+          fi
+          status=0
+          for file in $changed; do
+            echo "::group::mutation $file"
+            /crytic/bin/crytic test --subject "$file" --min-msi 90 || status=1
+            echo "::endgroup::"
+          done
+          exit $status
