@@ -11,12 +11,10 @@ Spec.before_suite do
   spawn { Kemal.run(PORT) }
 
   50.times do
-    begin
-      HTTP::Client.get("http://127.0.0.1:#{PORT}/")
-      break
-    rescue
-      sleep 20.milliseconds
-    end
+    HTTP::Client.get("http://127.0.0.1:#{PORT}/")
+    break
+  rescue
+    sleep 20.milliseconds
   end
 end
 
