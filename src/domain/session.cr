@@ -40,6 +40,7 @@ class Session
   end
 
   getter code : String
+  getter facilitator_token : String
   getter phase : Phase
 
   def initialize(
