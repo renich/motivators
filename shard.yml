@@ -1,0 +1,23 @@
+name: motivators
+version: 0.1.0
+
+authors:
+  - David D. YOTEAU
+
+crystal: ">= 1.21.0"
+
+license: MIT
+
+targets:
+  motivators:
+    main: src/motivators.cr
+
+dependencies:
+  kemal:
+    github: kemalcr/kemal
+    version: ~> 1.12
+
+development_dependencies:
+  ameba:
+    github: crystal-ameba/ameba
+    version: ~> 1.6
