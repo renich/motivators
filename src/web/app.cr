@@ -18,6 +18,11 @@ spawn do
   end
 end
 
+# Serve the single-page frontend at the root.
+get "/" do |env|
+  send_file env, "public/index.html", "text/html"
+end
+
 # A facilitator opens a session and receives the short join code plus their
 # private facilitator token — the two secrets are deliberately separate.
 post "/sessions" do |env|

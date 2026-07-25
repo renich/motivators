@@ -1,0 +1,51 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Moving Motivators</title>
+  <link rel="stylesheet" href="/style.css">
+</head>
+<body>
+  <main id="app">
+    <!-- Home -->
+    <section id="home" class="screen">
+      <h1>Moving Motivators</h1>
+      <button id="start">Start a session</button>
+      <p class="or">or join one</p>
+      <form id="join">
+        <input id="code" placeholder="CODE" autocomplete="off" maxlength="4" required>
+        <input id="name" placeholder="Your name" autocomplete="off" required>
+        <button type="submit">Join</button>
+      </form>
+      <p id="home-error" class="error" hidden></p>
+    </section>
+
+    <!-- Lobby / Revealed live view -->
+    <section id="room" class="screen" hidden>
+      <header>
+        <h1>Session <span id="room-code"></span></h1>
+        <p id="phase-label"></p>
+      </header>
+
+      <!-- Participant: rank the cards -->
+      <div id="editor" hidden>
+        <h2>Rank the cards — most important first</h2>
+        <ol id="cards"></ol>
+        <button id="ready">I'm ready</button>
+      </div>
+
+      <!-- Everyone: who's in the room -->
+      <ul id="people"></ul>
+
+      <!-- Facilitator: trigger the reveal -->
+      <button id="reveal" hidden>Reveal all rankings</button>
+
+      <!-- Revealed: rankings side by side -->
+      <div id="results" hidden></div>
+    </section>
+  </main>
+
+  <script src="/app.js"></script>
+</body>
+</html>
