@@ -29,7 +29,7 @@ class Hub
     targets = @mutex.synchronize { @connections[session.code].dup }
     targets.each do |conn|
       conn.socket.send(Payload.session(session.public_view(for: conn.id)))
-    rescue ex : IO::Error
+    rescue IO::Error
       # Ignore broken socket IO error during broadcast so remaining clients receive updates
     end
   end
