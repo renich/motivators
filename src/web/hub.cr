@@ -26,10 +26,11 @@ class Hub
 
   # Send each connected participant the session as they are allowed to see it.
   def broadcast(session : Session) : Nil
-    @mutex.synchronize do
-      @connections[session.code].each do |conn|
-        conn.socket.send(Payload.session(session.public_view(for: conn.id)))
-      end
+    targets = @mutex.synchronize { @connections[session.code].dup }
+    targets.each do |conn|
+      conn.socket.send(Payload.session(session.public_view(for: conn.id)))
+    rescue ex : IO::Error
+      # Ignore broken socket IO error during broadcast so remaining clients receive updates
     end
   end
 end
