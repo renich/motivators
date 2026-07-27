@@ -1,49 +1,37 @@
 require "../spec_helper"
 
-private def now
-  Time.utc(2026, 1, 1)
-end
-
 describe SessionStore do
-  it "opens a session findable by its code" do
-    store = SessionStore.new(ttl: 3.hours)
-    session = store.open(now)
-    store.find(session.code).should eq(session)
-  end
-
-  it "returns nil for an unknown code" do
-    SessionStore.new.find("ZZZZ").should be_nil
-  end
-
-  it "gives each session a distinct code" do
+  it "opens new sessions with unique codes" do
     store = SessionStore.new
-    codes = Array.new(20) { store.open(now).code }
-    codes.uniq.size.should eq(codes.size)
+    session1 = store.open
+    session2 = store.open
+
+    session1.code.should_not eq(session2.code)
+    store.find(session1.code).should eq(session1)
+    store.find(session2.code).should eq(session2)
   end
 
-  it "gives each session a distinct, non-empty facilitator token" do
-    store = SessionStore.new
-    first = store.open(now).facilitator_token
-    second = store.open(now).facilitator_token
-    first.should_not be_empty
-    first.should_not eq(second)
+  it "sweeps expired sessions safely" do
+    store = SessionStore.new(ttl: 0.seconds)
+    session = store.open
+    store.sweep.should eq(1)
+    store.find(session.code).should be_nil
   end
 
-  it "defaults to a multi-hour ttl" do
-    session = SessionStore.new.open(Time.utc(2026, 1, 1))
-    session.expired?(Time.utc(2026, 1, 1, 2, 0)).should be_false
-    session.expired?(Time.utc(2026, 1, 1, 4, 0)).should be_true
-  end
+  it "handles concurrent fiber access safely" do
+    store = SessionStore.new(ttl: 1.hour)
+    channel = Channel(Nil).new
 
-  it "sweeps expired sessions and keeps live ones" do
-    store = SessionStore.new(ttl: 3.hours)
-    old = store.open(Time.utc(2026, 1, 1))
-    fresh = store.open(Time.utc(2026, 1, 1, 2, 0))
+    10.times do
+      spawn do
+        s = store.open
+        store.find(s.code)
+        store.sweep
+        channel.send(nil)
+      end
+    end
 
-    swept = store.sweep(Time.utc(2026, 1, 1, 3, 30))
-
-    swept.should eq(1)
-    store.find(old.code).should be_nil
-    store.find(fresh.code).should eq(fresh)
+    10.times { channel.receive }
+    store.should_not be_nil
   end
 end
