@@ -22,7 +22,6 @@ module Payload
 
   private def self.participant_object(json : JSON::Builder, participant : ParticipantView) : Nil
     json.object do
-      json.field "id", participant.id
       json.field "name", participant.name
       json.field "ready", participant.ready?
       json.field "ranking" do

@@ -4,12 +4,11 @@ require "./participant"
 # Built by Session#public_view so confidentiality is enforced at the source:
 # before reveal, another participant's ranking is simply not put in the payload.
 struct ParticipantView
-  getter id : String
   getter name : String
   getter? ready : Bool
   getter ranking : Ranking?
 
-  def initialize(@id, @name, @ready, @ranking)
+  def initialize(@name : String, @ready : Bool, @ranking : Ranking?)
   end
 end
 
@@ -94,7 +93,7 @@ class Session
     views = @participants.values.map do |participant|
       visible = revealed? || participant.id == viewer_id
       ranking = visible ? participant.ranking : nil
-      ParticipantView.new(participant.id, participant.name, participant.ready?, ranking)
+      ParticipantView.new(participant.name, participant.ready?, ranking)
     end
     SessionView.new(@phase, @code, views)
   end

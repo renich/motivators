@@ -76,8 +76,8 @@ describe Session do
       session.submit("her", a_ranking)
 
       view = session.public_view(for: "me")
-      mine = view.participants.find! { |entry| entry.id == "me" }
-      hers = view.participants.find! { |entry| entry.id == "her" }
+      mine = view.participants.find! { |entry| entry.name == "Ada" }
+      hers = view.participants.find! { |entry| entry.name == "Grace" }
 
       mine.ranking.should_not be_nil
       hers.ranking.should be_nil
@@ -93,6 +93,14 @@ describe Session do
 
       view = session.public_view(for: "me")
       view.participants.all? { |entry| !entry.ranking.nil? }.should be_true
+    end
+
+    it "does not leak secret participant authentication tokens in public views" do
+      session = a_session
+      session.join(id: "secret-token-123", name: "Ada")
+      view = session.public_view(for: "secret-token-123")
+      entry = view.participants.first
+      entry.responds_to?(:id).should be_false
     end
   end
 end
