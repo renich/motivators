@@ -9,6 +9,9 @@ require "./payload"
 STORE = SessionStore.new
 HUB   = Hub.new
 
+# Longest participant name we accept — a display label, not an identity.
+MAX_NAME_LENGTH = 50
+
 # Periodic sweep of expired sessions. Single process, in-memory state: this
 # is the design that a multi-replica deploy would break (see TUTORIAL.md).
 spawn do
@@ -40,6 +43,8 @@ post "/sessions/:code/join" do |env|
     halt env, status_code: 404, response: %({"error":"unknown session"})
   elsif name.nil? || name.blank?
     halt env, status_code: 422, response: %({"error":"name required"})
+  elsif name.size > MAX_NAME_LENGTH
+    halt env, status_code: 422, response: %({"error":"name too long"})
   else
     id = Random::Secure.hex(8)
     session.join(id, name)
@@ -47,6 +52,8 @@ post "/sessions/:code/join" do |env|
     env.response.content_type = "application/json"
     {participant_id: id}.to_json
   end
+rescue JSON::ParseException
+  halt env, status_code: 400, response: %({"error":"invalid json body"})
 end
 
 # The live channel. All state changes after joining travel over here.

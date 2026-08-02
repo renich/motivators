@@ -321,6 +321,8 @@ post "/sessions/:code/join" do |env|
     halt env, status_code: 404, response: %({"error":"unknown session"})
   elsif name.nil? || name.blank?
     halt env, status_code: 422, response: %({"error":"name required"})
+  elsif name.size > MAX_NAME_LENGTH
+    halt env, status_code: 422, response: %({"error":"name too long"})
   else
     id = Random::Secure.hex(8)
     session.join(id, name)
@@ -328,8 +330,14 @@ post "/sessions/:code/join" do |env|
     env.response.content_type = "application/json"
     {participant_id: id}.to_json
   end
+rescue JSON::ParseException
+  halt env, status_code: 400, response: %({"error":"invalid json body"})
 end
 ```
+
+The guards stay boring on purpose: a missing or over-long name is a `422`, and
+a body that isn't valid JSON becomes a `400` instead of Kemal's default 500
+page — so a malformed request gets a clean answer, not a stack trace.
 
 The wire format lives in its own module, so the routes stay about routing. The
 serializer only *reflects* what the view decided — a hidden ranking is `nil`,

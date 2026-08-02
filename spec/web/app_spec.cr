@@ -132,4 +132,24 @@ describe "Moving Motivators over HTTP + WebSocket" do
     error = ada.wait_for { |json| !json["error"]?.nil? }
     error["error"].as_s.should contain("facilitator")
   end
+
+  it "answers 400, not a 500 page, on a malformed JSON body" do
+    code, _token = open_session
+    response = HTTP::Client.post(
+      "#{base}/sessions/#{code}/join",
+      headers: HTTP::Headers{"Content-Type" => "application/json"},
+      body: "not json at all",
+    )
+    response.status_code.should eq(400)
+  end
+
+  it "rejects a name longer than the limit" do
+    code, _token = open_session
+    response = HTTP::Client.post(
+      "#{base}/sessions/#{code}/join",
+      headers: HTTP::Headers{"Content-Type" => "application/json"},
+      body: {name: "x" * 51}.to_json,
+    )
+    response.status_code.should eq(422)
+  end
 end
