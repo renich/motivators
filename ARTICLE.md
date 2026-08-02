@@ -249,3 +249,10 @@ conclusion. That's the point.
 
 If you'd right-size differently, I'd genuinely like to hear it — tell me in the
 comments.
+
+---
+
+*Thanks to [@renich](https://github.com/renich) for spotting that the participant
+id — which doubles as the secret WebSocket token — was being broadcast in the
+session view, and for the first fix. The `you`-flag approach in the
+confidentiality section is what closed it.*

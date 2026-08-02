@@ -602,3 +602,10 @@ bonus chapter, not the default — and reaching for it before you need it would
 be exactly the over-engineering this whole tutorial argues against.
 
 The app you have is the right size for the problem. That was the point.
+
+---
+
+*Thanks to [@renich](https://github.com/renich) for spotting that a participant's
+id — which doubles as their secret WebSocket token — was being broadcast in the
+session view, and for the first fix. The `you`-flag approach in Chapter 4 is what
+closed it.*
