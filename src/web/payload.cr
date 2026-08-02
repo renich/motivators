@@ -24,6 +24,7 @@ module Payload
     json.object do
       json.field "name", participant.name
       json.field "ready", participant.ready?
+      json.field "you", participant.you?
       json.field "ranking" do
         ranking = participant.ranking
         if ranking.nil?

@@ -209,9 +209,10 @@ domain — the one place that can't be bypassed by a forgetful route handler:
 # src/domain/session.cr
 def public_view(for viewer_id : String) : SessionView
   views = @participants.values.map do |participant|
-    visible = revealed? || participant.id == viewer_id
+    mine = participant.id == viewer_id
+    visible = revealed? || mine
     ranking = visible ? participant.ranking : nil
-    ParticipantView.new(participant.id, participant.name, participant.ready?, ranking)
+    ParticipantView.new(participant.name, participant.ready?, ranking, you: mine)
   end
   SessionView.new(@phase, @code, views)
 end
@@ -224,12 +225,20 @@ that:
 ```crystal
 # spec/domain/session_spec.cr
 view = session.public_view(for: "me")
-mine = view.participants.find! { |entry| entry.id == "me" }
-hers = view.participants.find! { |entry| entry.id == "her" }
+mine = view.participants.find!(&.you?)
+hers = view.participants.find! { |entry| !entry.you? }
 
 mine.ranking.should_not be_nil
 hers.ranking.should be_nil
 ```
+
+Notice what the view does **not** carry: the participant's `id`. That id is
+their secret WebSocket token (`?as=…`). Putting it in a projection every client
+receives would hand each participant everyone else's credentials — enough to
+reconnect as them and read their ranking before the reveal. So the view marks
+the viewer's own entry with a non-secret `you` flag instead, and the token
+never leaves the server. Confidentiality here is not only about rankings; it is
+about never serialising a secret the client didn't already hold.
 
 Because confidentiality is decided here, no downstream layer has to remember to
 enforce it. The serializer and the WebSocket hub just faithfully transmit

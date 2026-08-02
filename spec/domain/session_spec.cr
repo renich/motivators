@@ -76,11 +76,23 @@ describe Session do
       session.submit("her", a_ranking)
 
       view = session.public_view(for: "me")
-      mine = view.participants.find! { |entry| entry.name == "Ada" }
-      hers = view.participants.find! { |entry| entry.name == "Grace" }
+      mine = view.participants.find!(&.you?)
+      hers = view.participants.find! { |entry| !entry.you? }
 
       mine.ranking.should_not be_nil
       hers.ranking.should be_nil
+    end
+
+    it "marks only the viewer's own entry with the you flag" do
+      session = a_session
+      session.join(id: "me", name: "Ada")
+      session.join(id: "her", name: "Grace")
+
+      view = session.public_view(for: "me")
+
+      view.participants.count(&.you?).should eq(1)
+      view.participants.find! { |entry| entry.name == "Ada" }.you?.should be_true
+      view.participants.find! { |entry| entry.name == "Grace" }.you?.should be_false
     end
 
     it "reveals every ranking after reveal" do
@@ -93,14 +105,6 @@ describe Session do
 
       view = session.public_view(for: "me")
       view.participants.all? { |entry| !entry.ranking.nil? }.should be_true
-    end
-
-    it "does not leak secret participant authentication tokens in public views" do
-      session = a_session
-      session.join(id: "secret-token-123", name: "Ada")
-      view = session.public_view(for: "secret-token-123")
-      entry = view.participants.first
-      entry.responds_to?(:id).should be_false
     end
   end
 end

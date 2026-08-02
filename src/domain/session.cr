@@ -3,12 +3,17 @@ require "./participant"
 # What a participant is allowed to see of a session at a given moment.
 # Built by Session#public_view so confidentiality is enforced at the source:
 # before reveal, another participant's ranking is simply not put in the payload.
+#
+# A participant's id is their secret WebSocket token, so it is deliberately
+# absent here — the view carries only a non-secret `you` flag marking the
+# viewer's own entry, never anyone's token.
 struct ParticipantView
   getter name : String
   getter? ready : Bool
   getter ranking : Ranking?
+  getter? you : Bool
 
-  def initialize(@name : String, @ready : Bool, @ranking : Ranking?)
+  def initialize(@name, @ready, @ranking, @you)
   end
 end
 
@@ -91,9 +96,10 @@ class Session
   # session is revealed or when it belongs to the viewer themselves.
   def public_view(for viewer_id : String) : SessionView
     views = @participants.values.map do |participant|
-      visible = revealed? || participant.id == viewer_id
+      mine = participant.id == viewer_id
+      visible = revealed? || mine
       ranking = visible ? participant.ranking : nil
-      ParticipantView.new(participant.name, participant.ready?, ranking)
+      ParticipantView.new(participant.name, participant.ready?, ranking, you: mine)
     end
     SessionView.new(@phase, @code, views)
   end

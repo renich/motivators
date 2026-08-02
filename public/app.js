@@ -143,7 +143,7 @@ function renderPeople(participants) {
   list.innerHTML = "";
   participants.forEach((person) => {
     const li = document.createElement("li");
-    const you = person.id === state.myId ? " (you)" : "";
+    const you = person.you ? " (you)" : "";
     const status = person.ready
       ? `<span class="ready">ready</span>`
       : `<span class="waiting">…</span>`;
