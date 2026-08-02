@@ -110,9 +110,10 @@ domain** — the one place a forgetful route handler can't bypass:
 ```crystal
 def public_view(for viewer_id : String) : SessionView
   views = @participants.values.map do |participant|
-    visible = revealed? || participant.id == viewer_id
+    mine = participant.id == viewer_id
+    visible = revealed? || mine
     ranking = visible ? participant.ranking : nil
-    ParticipantView.new(participant.id, participant.name, participant.ready?, ranking)
+    ParticipantView.new(participant.name, participant.ready?, ranking, you: mine)
   end
   SessionView.new(@phase, @code, views)
 end
@@ -122,7 +123,9 @@ A ranking makes it into the view only when the session is revealed **or** it's
 the viewer's own. Everyone else's `ranking` is `nil`. Because confidentiality is
 decided *here*, no downstream layer has to remember to enforce it — the
 serializer and the WebSocket hub just faithfully transmit whatever the view
-contains.
+contains. Note what the view *omits*: the participant's `id` is their secret
+WebSocket token, so it marks the viewer with a plain `you` flag rather than
+handing every client everyone else's credentials.
 
 And I test the wire directly, with belt and suspenders — not only should a hidden
 ranking be `null`, no card name from it may appear anywhere in the bytes:
