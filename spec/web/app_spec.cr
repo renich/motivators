@@ -106,6 +106,23 @@ describe "Moving Motivators over HTTP + WebSocket" do
     participant(shown, "Grace")["ranking"].as_a.size.should eq(10)
   end
 
+  it "never puts a participant's secret token on the wire" do
+    code, _token = open_session
+    me = join(code, "Ada")
+    her = join(code, "Grace")
+
+    ada = Client.new(code, me)
+    frame = ada.wait_for { |json| json["participants"].as_a.size == 2 }
+
+    # The ids are the private WebSocket credentials — leaking them would let
+    # anyone reconnect as another participant and read their ranking.
+    frame.to_json.should_not contain(me)
+    frame.to_json.should_not contain(her)
+
+    participant(frame, "Ada")["you"].as_bool.should be_true
+    participant(frame, "Grace")["you"].as_bool.should be_false
+  end
+
   it "rejects a reveal with the wrong token" do
     code, _token = open_session
     me = join(code, "Ada")
