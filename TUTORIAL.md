@@ -374,13 +374,20 @@ the hub sends every socket its **own** `public_view`:
 ```crystal
 # src/web/hub.cr
 def broadcast(session : Session) : Nil
-  @mutex.synchronize do
-    @connections[session.code].each do |conn|
-      conn.socket.send(Payload.session(session.public_view(for: conn.id)))
-    end
+  targets = @mutex.synchronize { @connections[session.code].dup }
+  targets.each do |conn|
+    conn.socket.send(Payload.session(session.public_view(for: conn.id)))
+  rescue IO::Error
+    # a dead socket must not abort the broadcast for the rest of the room
   end
 end
 ```
+
+Two robustness details earn their place. The lock is held only long enough to
+copy the connection list — never across a blocking `send`, or one slow client
+would stall joins and broadcasts for *every* session on the server. And a
+broken socket raises `IO::Error`, caught per connection, so one dropped client
+can't cut off the rest of the room.
 
 Confidentiality is not re-implemented here. The hub trusts the view; the view
 already withheld what must stay secret. That's the payoff of Chapter 4.
