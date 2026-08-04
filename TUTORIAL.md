@@ -620,6 +620,62 @@ The app you have is the right size for the problem. That was the point.
 
 ---
 
+## Bonus Chapter — Parallelism and Boundary Synchronization
+
+Throughout this tutorial, state management has been remarkably straightforward:
+we instantiate plain Crystal objects (`SessionStore`, `Session`), mutate their internal
+`Hash` collections during HTTP or WebSocket events, and never worry about mutexes or race conditions.
+
+That simplicity is a direct consequence of Crystal's default single-threaded execution model.
+
+### Why single-threaded execution is safe by default
+
+By default, Kemal runs on a single event-loop thread. Requests run inside lightweight **fibers**, which are **cooperatively scheduled**: a fiber only yields control to another fiber at explicit IO await points (like socket reads/writes or database calls).
+
+Because our domain models (`Session`, `SessionStore`, `Ranking`) perform **zero IO**, any operation on them — joining a room, submitting a ranking, or sweeping expired sessions — runs atomically from start to finish within a single fiber. No two fibers can interrupt each other mid-computation, making domain mutations safe in single-threaded mode.
+
+> **Note on multi-threading:** In Crystal 1.20+, multi-threading and execution contexts are supported natively. When running with multiple worker threads (`CRYSTAL_WORKERS=4`), requests can run simultaneously across separate OS threads. In that mode, concurrent requests mutating unsynchronized `Hash` objects will cause data races.
+
+### The right place to synchronize: the boundary, not the domain
+
+When encountering multi-threaded data races, a common reflex is to add `Mutex` locks directly inside every domain object (`Session#join`, `Session#submit`).
+
+That approach breaks our core architectural principle: **keep the domain pure**.
+
+Threading locks directly into domain entities introduces subtle issues:
+- **Deadlock traps**: Crystal's standard mutexes are non-reentrant. If a synchronized method (like `reveal`) calls an internal helper (like `guard_lobby!`) that tries to lock the same mutex, it raises a deadlock error.
+- **Cognitive clutter**: Readers must track lock hierarchies alongside business logic.
+- **Polluted specs**: Unit tests must now mock or manage concurrency primitives.
+
+Instead, **synchronization belongs at the adapter boundary**:
+
+```crystal
+# A thread-safe boundary adapter wrapping session access
+class SynchronizedSessionStore
+  def initialize(@store : SessionStore = SessionStore.new)
+    @mutex = Mutex.new
+  end
+
+  def open(at : Time = Time.utc) : Session
+    @mutex.synchronize { @store.open(at) }
+  end
+
+  def find(code : String) : Session?
+    @mutex.synchronize { @store.find(code) }
+  end
+
+  def sweep(at : Time = Time.utc) : Nil
+    @mutex.synchronize { @store.sweep(at) }
+  end
+end
+```
+
+By placing the lock at the boundary (`SynchronizedSessionStore` or within `Hub`), the domain entities (`Session`, `SessionStore`) remain pure, readable, and lock-free state machines.
+
+This reinforces our central thesis once more: **keep domain objects pure, and right-size concurrency controls at the edges.**
+
+---
+
 *Thanks to [@renich](https://github.com/renich) for spotting that a participant's
 id — which doubles as their secret WebSocket token — was being broadcast in the
 session view, and for the first fix. The `you`-flag approach in Chapter 4 is what
